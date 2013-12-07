@@ -21,12 +21,14 @@
 #define PIN_MISO 12 // ...
 #define PIN_SCK  13 // ...
 
-Adafruit_CC3000 wifi = Adafruit_CC3000(PIN_CS, PIN_IRQ, PIN_VBAT, SPI_CLOCK_DIV2);
-
 // Your wireless network details. Change these!
 #define WIFI_SSID     "CHANGEME"
 #define WIFI_PASSWORD "ALSOME"
 #define WIFI_SECURITY WLAN_SEC_WPA2 // or UNSEC, WEP, or WPA in place of WPA2
+
+#define LISTEN_PORT 49572
+Adafruit_CC3000 wifi = Adafruit_CC3000(PIN_CS, PIN_IRQ, PIN_VBAT, SPI_CLOCK_DIV2);
+Adafruit_CC3000_Server server(LISTEN_PORT);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -57,13 +59,24 @@ void setup(void) {
   printIP();
   Serial.println();
 
+  Serial.print("Starting server on port ");
+  Serial.print(LISTEN_PORT, DEC);
+  Serial.println("...");
+  server.begin();
+
   Serial.print("Done! Free RAM: ");
   Serial.print(getFreeRam(), DEC);
   Serial.println(" bytes");
 }
 
 void loop(void) {
-  // do nothing. Forever.
+  Adafruit_CC3000_ClientRef client = server.available();
+  if( client ) {
+    if( client.available() > 0 ) {
+      uint8_t ch = client.read();
+      server.write(ch);
+    }
+  }
 }
 
 void connect(void) {
