@@ -38,6 +38,11 @@ Adafruit_NeoPixel strip(NEOPIXEL_COUNT, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 #define LISTEN_PORT 49572
 #define MDNS_NAME   "neopixels"
 
+// Stash these here for RAM savings and also DRY. Change at your own peril.
+#define MSG_HALTING F("failed! Halting.")
+#define MSG_SUCCESS F("success!")
+#define MSG_DOT     F(".")
+
 Adafruit_CC3000 wifi = Adafruit_CC3000(PIN_CS, PIN_IRQ, PIN_VBAT, SPI_CLOCK_DIV2);
 Adafruit_CC3000_Server server(LISTEN_PORT);
 MDNSResponder mdns;
@@ -49,49 +54,47 @@ void setup(void) {
   CC3KPrinter = 0;
 
   Serial.begin(115200);
-  Serial.print("Initializing CC3000...");
+  Serial.print(F("Initializing CC3000..."));
 
   if( wifi.begin() ) {
-    Serial.println("success!");
+    Serial.println(MSG_SUCCESS);
   } else {
-    Serial.println("failed. Check your wiring.");
+    halt();
   }
 
-  Serial.print("Connecting to AP.");
+  Serial.print(F("Connecting to AP."));
   connect();
-  Serial.println("success!");
+  Serial.println(MSG_SUCCESS);
 
-  Serial.print("Getting an IP address from DHCP.");
+  Serial.print(F("Getting an IP address from DHCP."));
   while( !wifi.checkDHCP() ) {
-    Serial.print(".");
+    Serial.print(MSG_DOT);
     delay(100);
   }
 
-  Serial.print(" ");
   printIP();
   Serial.println();
 
-  Serial.print("Configuring mDNS...");
+  Serial.print(F("Configuring mDNS..."));
   if( !mdns.begin(MDNS_NAME, wifi) ) {
-    Serial.println("failed! Halting.");
-    while(1);
+    halt();
   } else {
     Serial.print(MDNS_NAME);
-    Serial.println(".local");
+    Serial.println(F(".local"));
   }
 
-  Serial.print("Starting server on port ");
+  Serial.print(F("Starting server on port "));
   Serial.print(LISTEN_PORT, DEC);
-  Serial.println("...");
+  Serial.println(F("..."));
   server.begin();
 
-  Serial.print("Configuring NeoPixels...");
+  Serial.print(F("Configuring NeoPixels..."));
   setupStrip();
-  Serial.println("success!");
+  Serial.println(MSG_SUCCESS);
 
-  Serial.print("Done! Free RAM: ");
+  Serial.print(F("Done! Free RAM: "));
   Serial.print(getFreeRam(), DEC);
-  Serial.println(" bytes");
+  Serial.println(F(" bytes"));
 }
 
 void loop(void) {
@@ -106,22 +109,22 @@ void loop(void) {
   // values.
   //
   if( client && client.available() > 0 ) {
-    Serial.print("Reading command");
+    Serial.print(F("Reading command"));
     byte cmd[5];
 
     for( int i = 0; i < 5; i++ ) {
       cmd[i] = client.read();
-      Serial.print(".");
+      Serial.print(MSG_DOT);
     }
 
     unsigned int addr = cmd[0] | (cmd[1] << 8);
 
     Serial.print(addr);
-    Serial.print(": ");
+    Serial.print(F(": "));
     Serial.print(cmd[2]);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.print(cmd[3]);
-    Serial.print(",");
+    Serial.print(F(","));
     Serial.println(cmd[4]);
 
     uint32_t color = strip.Color(cmd[2], cmd[3], cmd[4]);
@@ -140,17 +143,15 @@ void loop(void) {
 
 void connect(void) {
   if( wifi.deleteProfiles() ) {
-    Serial.print(".");
+    Serial.print(MSG_DOT);
   } else {
-    Serial.println("failed! Halting.");
-    while(1);
+    halt();
   }
 
   if( wifi.connectToAP(WIFI_SSID, WIFI_PASSWORD, WIFI_SECURITY) ) {
-    Serial.print(".");
+    Serial.print(MSG_DOT);
   } else {
-    Serial.println("failed! Halting.");
-    while(1);
+    halt();
   }
 }
 
@@ -163,11 +164,11 @@ void printIP(void) {
   memcpy(&ip, ipconfig.aucIP, 4);
 
   Serial.print((uint8_t)(ip >> 24));
-  Serial.print(".");
+  Serial.print(MSG_DOT);
   Serial.print((uint8_t)(ip >> 16));
-  Serial.print(".");
+  Serial.print(MSG_DOT);
   Serial.print((uint8_t)(ip >> 8));
-  Serial.print(".");
+  Serial.print(MSG_DOT);
   Serial.print((uint8_t)(ip));
 }
 
@@ -202,4 +203,9 @@ void setStripColor(uint32_t color) {
   for(int i = 0; i < NEOPIXEL_COUNT; i++) {
     strip.setPixelColor(i, color);
   }
+}
+
+void halt(void) {
+  Serial.println(MSG_HALTING);
+  while(1);
 }
