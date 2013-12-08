@@ -98,12 +98,43 @@ void loop(void) {
   // handle mDNS requests
   mdns.update();
 
+  // grab a waiting client connection
   Adafruit_CC3000_ClientRef client = server.available();
-  if( client ) {
-    if( client.available() > 0 ) {
-      uint8_t ch = client.read();
-      server.write(ch);
+
+  // commands are 5 bytes long where the first two bytes are the address of the
+  // pixel to change (or 0xFFFF for the entire strip) followed by R, G, and B
+  // values.
+  //
+  if( client && client.available() > 0 ) {
+    Serial.print("Reading command");
+    byte cmd[5];
+
+    for( int i = 0; i < 5; i++ ) {
+      cmd[i] = client.read();
+      Serial.print(".");
     }
+
+    unsigned int addr = cmd[0] | (cmd[1] << 8);
+
+    Serial.print(addr);
+    Serial.print(": ");
+    Serial.print(cmd[2]);
+    Serial.print(",");
+    Serial.print(cmd[3]);
+    Serial.print(",");
+    Serial.println(cmd[4]);
+
+    uint32_t color = strip.Color(cmd[2], cmd[3], cmd[4]);
+
+    if( addr == 0xFFFF ) {
+      for(uint16_t i = 0; i < NEOPIXEL_COUNT; i++) {
+        strip.setPixelColor(i, color);
+      }
+    } else {
+      strip.setPixelColor(addr, color);
+    }
+
+    strip.show();
   }
 }
 
