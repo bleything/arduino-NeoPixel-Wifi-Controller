@@ -11,6 +11,7 @@
 
 #include <Adafruit_CC3000.h>
 #include <SPI.h>
+#include <CC3000_MDNS.h>
 #include "../../libraries/Adafruit_CC3000/utility/debug.h"
 
 // pin assignments for the Adafruit CC3000 Shield
@@ -26,9 +27,13 @@
 #define WIFI_PASSWORD "ALSOME"
 #define WIFI_SECURITY WLAN_SEC_WPA2 // or UNSEC, WEP, or WPA in place of WPA2
 
+// Server details. Probably leave these alone.
 #define LISTEN_PORT 49572
+#define MDNS_NAME   "neopixels"
+
 Adafruit_CC3000 wifi = Adafruit_CC3000(PIN_CS, PIN_IRQ, PIN_VBAT, SPI_CLOCK_DIV2);
 Adafruit_CC3000_Server server(LISTEN_PORT);
+MDNSResponder mdns;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -59,6 +64,15 @@ void setup(void) {
   printIP();
   Serial.println();
 
+  Serial.print("Configuring mDNS...");
+  if( !mdns.begin(MDNS_NAME, wifi) ) {
+    Serial.println("failed! Halting.");
+    while(1);
+  } else {
+    Serial.print(MDNS_NAME);
+    Serial.println(".local");
+  }
+
   Serial.print("Starting server on port ");
   Serial.print(LISTEN_PORT, DEC);
   Serial.println("...");
@@ -70,6 +84,9 @@ void setup(void) {
 }
 
 void loop(void) {
+  // handle mDNS requests
+  mdns.update();
+
   Adafruit_CC3000_ClientRef client = server.available();
   if( client ) {
     if( client.available() > 0 ) {
