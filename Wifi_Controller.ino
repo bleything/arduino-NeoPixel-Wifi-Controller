@@ -10,9 +10,16 @@
  ******************************************************************************/
 
 #include <Adafruit_CC3000.h>
+#include <Adafruit_NeoPixel.h>
 #include <SPI.h>
 #include <CC3000_MDNS.h>
 #include "../../libraries/Adafruit_CC3000/utility/debug.h"
+
+// NeoPixel configuration
+#define PIN_NEOPIXEL   6
+#define NEOPIXEL_COUNT 60
+
+Adafruit_NeoPixel strip(NEOPIXEL_COUNT, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
 // pin assignments for the Adafruit CC3000 Shield
 #define PIN_IRQ  3
@@ -78,6 +85,10 @@ void setup(void) {
   Serial.println("...");
   server.begin();
 
+  Serial.print("Configuring NeoPixels...");
+  setupStrip();
+  Serial.println("success!");
+
   Serial.print("Done! Free RAM: ");
   Serial.print(getFreeRam(), DEC);
   Serial.println(" bytes");
@@ -127,4 +138,37 @@ void printIP(void) {
   Serial.print((uint8_t)(ip >> 8));
   Serial.print(".");
   Serial.print((uint8_t)(ip));
+}
+
+void setupStrip(void) {
+  // initialize and blank the strip
+  strip.begin();
+  strip.show();
+
+  uint32_t white = strip.Color(255,255,255);
+
+  for(int i = 0; i < 255; i++) {
+    setStripColor(white);
+    strip.setBrightness(i);
+    strip.show();
+    delay(3);
+  }
+
+  for(int i = 255; i > 0; i--) {
+    setStripColor(white);
+    strip.setBrightness(i);
+    strip.show();
+    delay(3);
+  }
+
+  // blank the strip again
+  setStripColor(strip.Color(0,0,0));
+  strip.setBrightness(255);
+  strip.show();
+}
+
+void setStripColor(uint32_t color) {
+  for(int i = 0; i < NEOPIXEL_COUNT; i++) {
+    strip.setPixelColor(i, color);
+  }
 }
